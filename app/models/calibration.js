@@ -5,10 +5,32 @@ function getConnection() {
   return connection;
 }
 
+function Fossil(databaseRow) {
+  // Fossil Number
+  // Fossil Name
+  // Fossil Strat Unit
+  // Fossil Max
+  // Fossil Min
+  // Fossil Position
+  // Fossil Reference
+}
+
 function Calibration(databaseRow) {
-    for(var propertyName in databaseRow) {
-        this[propertyName] = databaseRow[propertyName];
-    }
+  // Properties to fill
+  this.nodeName = databaseRow['NodeName'];
+  this.nodeMinAge = databaseRow['MinAge'];
+  this.nodeMaxAge = databaseRow['MaxAge'];
+  this.calibrationReference = databaseRow['FullReference'];
+  var calibrationId = databaseRow['']
+  this.fossils = [];
+  // fossils
+  // TODO: make fossil objects
+
+  this.tipPairs = [];
+  // tip_pairs
+    // Tip 1 Name
+    // Tip 2 Name
+    // “Distance” of root from tip(s)?
 }
 
 function Calibrations() {
@@ -24,6 +46,8 @@ function Calibrations() {
     // callback is (calibration, err)
     // query the calibrations by id
     var queryString = 'SELECT * FROM ' + TABLE_NAME + ' WHERE CalibrationID = ?';
+    // TODO: write a method that takes a calibration Id and makes a calibration
+    // populating its fossils too
     query(queryString, [calibration_id], function(err, results) {
         if(err) {
           callback(null,err);
