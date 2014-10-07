@@ -19,10 +19,11 @@ function Calibrations() {
     connection.end()
   }
 
+  var TABLE_NAME = 'View_Calibrations';
   this.findById = function(calibration_id, callback) {
     // callback is (calibration, err)
     // query the calibrations by id
-    var queryString = 'SELECT * FROM calibrations WHERE CalibrationID = ?';
+    var queryString = 'SELECT * FROM ' + TABLE_NAME + ' WHERE CalibrationID = ?';
     query(queryString, [calibration_id], function(err, results) {
         if(err) {
           callback(null,err);
@@ -33,7 +34,7 @@ function Calibrations() {
       });
     };
   this.findByFilter = function(params, callback) {
-    var queryString = 'SELECT * FROM calibrations WHERE minAge > ? AND maxAge < ?';
+    var queryString = 'SELECT * FROM ' + TABLE_NAME + ' WHERE minAge > ? AND maxAge < ?';
     query(queryString, [params.min, params.max], function(err, results) {
       if(err) {
         callback(null,err);
