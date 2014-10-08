@@ -26,11 +26,8 @@ function Calibration(databaseRow) {
   this.nodeMinAge = databaseRow['MinAge'];
   this.nodeMaxAge = databaseRow['MaxAge'];
   this.calibrationReference = databaseRow['FullReference'];
-  var calibrationId = databaseRow['']
   this.fossils = [];
   // fossils
-  // TODO: make fossil objects
-
   this.tipPairs = [];
   // tip_pairs
     // Tip 1 Name
@@ -41,7 +38,7 @@ function Calibration(databaseRow) {
 function Calibrations() {
   var TABLE_NAME = 'View_Calibrations';
   function query(queryString, queryParams, callback) {
-    pool.query(queryString, queryParams, callback);
+    return pool.query(queryString, queryParams, callback);
   }
 
   function getCalibrationWithId(calibrationId, callback) {
@@ -74,20 +71,49 @@ function Calibrations() {
               callback(calibration);
             }
           });
-          // tops
+          // tips
         }
       }
     );
   };
   this.findByFilter = function(params, callback) {
     var queryString = 'SELECT CalibrationID FROM ' + TABLE_NAME + ' WHERE minAge > ? AND maxAge < ?';
+    var calibrationResults = [];
+    var success = function(result) {
+      callback(result);
+    };
+
+    var failed = function(err) {
+      callback(null, err);
+    };
+
     query(queryString, [params.min, params.max], function(err, results) {
       if(err) {
-        callback(null,err);
-      } else {
-        var calibrationResults = results.map(function(result) { return new Calibration(result)});
-        callback(calibrationResults);
+        failed(err);
+        return;
       }
+      results.forEach(function(result, index, array) {
+      var calibrationId = result['CalibrationID'];
+        getCalibrationWithId(calibrationId, function(calibration, err) {
+          if(err) {
+            failed(err);
+            return;
+          }
+          getFossilsForCalibrationId(calibrationId, function(fossils, err) {
+            if(err) {
+              failed(err);
+              return;
+            }
+            calibration.fossils = fossils;
+            calibrationResults.push(calibration);
+            // If this is the last one, finish everything up
+            if(index == array.length - 1) {
+              success(calibrationResults);
+              return;
+            }
+          });
+        });
+      });
     });
   };
 }
