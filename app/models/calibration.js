@@ -7,14 +7,39 @@ var pool  = mysql.createPool(connectionParams);
  */
 
 function Fossil(databaseRow) {
-  this.fossilNumber = '1234';
-  // Fossil Number
-  // Fossil Name
+  /*
+  // fields available
+   FossilID 101
+   CollectionAcro MNHNFr
+   CollectionNumber Av.4134
+   FossilPub 161
+   LocalityID 50
+   LocalityName CrÃ©chy, France
+   Country France
+   LocalityNotes
+   Stratum Saint-GÃ©rand-le-Puy
+   StratumMinAge 0
+   StratumMaxAge 0
+   PBDBCollectionNum
+   Age Chattian
+   Epoch Oligocene
+   Period Paleogene
+   System Cenozoic
+   StartAge 28.5
+   EndAge 23.8
+   ShortName GSA 1999
+   FullReference 1999 Geological Time Scale, The Geological Society of America. Product code CTS004.  Compilers: A. R. Palmer and J. Geissman.
+   */
+  this.id = databaseRow['FossilID'];
+  this.collection = databaseRow['CollectionAcro'];
+  this.collectionNumber = databaseRow['CollectionNumber'];
+  this.shortReference = databaseRow['ShortName'];
+  this.fullReference = databaseRow['FullReference'];
+
   // Fossil Strat Unit
   // Fossil Max
   // Fossil Min
   // Fossil Position
-  // Fossil Reference
 }
 
 /*
@@ -54,7 +79,15 @@ function Calibrations() {
   }
 
   function getFossilsForCalibrationId(calibrationId, callback) {
-    callback([new Fossil({})]);
+    var queryString = 'SELECT F.* from Link_CalibrationFossil L, View_Fossils F WHERE L.CalibrationId = ? AND L.FossilID = F.FossilID';
+    query(queryString, [calibrationId], function(err, results) {
+      if(err) {
+        callback(null,err);
+      } else {
+        var fossilResults = results.map(function(result) { return new Fossil(result); });
+        callback(fossilResults);
+      }
+    });
   }
 
   this.findById = function(calibration_id, callback) {
@@ -107,6 +140,8 @@ function Calibrations() {
             calibration.fossils = fossils;
             calibrationResults.push(calibration);
             // If this is the last one, finish everything up
+            // This is done because mysql results are async
+            // Could use the async node module to help a little bit, but this works for now
             if(index == array.length - 1) {
               success(calibrationResults);
               return;
