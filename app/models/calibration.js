@@ -1,16 +1,13 @@
 var mysql  = require('mysql');
 var connectionParams = require('../../config/connectionParams');
-function getConnection() {
-  var connection = mysql.createConnection(connectionParams);
-  return connection;
-}
+var pool  = mysql.createPool(connectionParams);
 
 /*
   Creates a Fossil object from a database row
  */
 
 function Fossil(databaseRow) {
-  this.fossilNumber = databaseRow['']
+  this.fossilNumber = '1234';
   // Fossil Number
   // Fossil Name
   // Fossil Strat Unit
@@ -19,6 +16,7 @@ function Fossil(databaseRow) {
   // Fossil Position
   // Fossil Reference
 }
+
 /*
   Creates a calibration object from a database row
  */
@@ -41,31 +39,48 @@ function Calibration(databaseRow) {
 }
 
 function Calibrations() {
+  var TABLE_NAME = 'View_Calibrations';
   function query(queryString, queryParams, callback) {
-    var connection = getConnection();
-    connection.connect();
-    connection.query(queryString, queryParams, callback);
-    connection.end()
+    pool.query(queryString, queryParams, callback);
   }
 
-  var TABLE_NAME = 'View_Calibrations';
-  this.findById = function(calibration_id, callback) {
-    // callback is (calibration, err)
-    // query the calibrations by id
+  function getCalibrationWithId(calibrationId, callback) {
     var queryString = 'SELECT * FROM ' + TABLE_NAME + ' WHERE CalibrationID = ?';
-    // TODO: write a method that takes a calibration Id and makes a calibration
-    // populating its fossils too
-    query(queryString, [calibration_id], function(err, results) {
+    query(queryString, [calibrationId], function(err, results) {
+      if(err) {
+        callback(null,err);
+      } else {
+        var calibrationResult = new Calibration(results[0]);
+        callback(calibrationResult);
+      }
+    });
+  }
+
+  function getFossilsForCalibrationId(calibrationId, callback) {
+    callback([new Fossil({})]);
+  }
+
+  this.findById = function(calibration_id, callback) {
+    getCalibrationWithId(calibration_id, function(calibration, err) {
         if(err) {
-          callback(null,err);
+           callback(null, err);
         } else {
-          var calibrationResult = new Calibration(results[0]);
-          callback(calibrationResult);
+          // attach fossils
+          getFossilsForCalibrationId(calibration_id, function (fossils, err) {
+            if (err) {
+              callback(null, err);
+            } else {
+              calibration.fossils = fossils;
+              callback(calibration);
+            }
+          });
+          // tops
         }
-      });
-    };
+      }
+    );
+  };
   this.findByFilter = function(params, callback) {
-    var queryString = 'SELECT * FROM ' + TABLE_NAME + ' WHERE minAge > ? AND maxAge < ?';
+    var queryString = 'SELECT CalibrationID FROM ' + TABLE_NAME + ' WHERE minAge > ? AND maxAge < ?';
     query(queryString, [params.min, params.max], function(err, results) {
       if(err) {
         callback(null,err);
