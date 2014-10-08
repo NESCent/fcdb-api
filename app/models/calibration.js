@@ -5,7 +5,12 @@ function getConnection() {
   return connection;
 }
 
+/*
+  Creates a Fossil object from a database row
+ */
+
 function Fossil(databaseRow) {
+  this.fossilNumber = databaseRow['']
   // Fossil Number
   // Fossil Name
   // Fossil Strat Unit
@@ -14,7 +19,9 @@ function Fossil(databaseRow) {
   // Fossil Position
   // Fossil Reference
 }
-
+/*
+  Creates a calibration object from a database row
+ */
 function Calibration(databaseRow) {
   // Properties to fill
   this.nodeName = databaseRow['NodeName'];
