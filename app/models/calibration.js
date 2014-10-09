@@ -7,39 +7,22 @@ var pool  = mysql.createPool(connectionParams);
  */
 
 function Fossil(databaseRow) {
-  /*
-  // fields available
-   FossilID 101
-   CollectionAcro MNHNFr
-   CollectionNumber Av.4134
-   FossilPub 161
-   LocalityID 50
-   LocalityName CrÃ©chy, France
-   Country France
-   LocalityNotes
-   Stratum Saint-GÃ©rand-le-Puy
-   StratumMinAge 0
-   StratumMaxAge 0
-   PBDBCollectionNum
-   Age Chattian
-   Epoch Oligocene
-   Period Paleogene
-   System Cenozoic
-   StartAge 28.5
-   EndAge 23.8
-   ShortName GSA 1999
-   FullReference 1999 Geological Time Scale, The Geological Society of America. Product code CTS004.  Compilers: A. R. Palmer and J. Geissman.
-   */
+  // From Link_CalibrationFossil and View_Fossils
   this.id = databaseRow['FossilID'];
   this.collection = databaseRow['CollectionAcro'];
   this.collectionNumber = databaseRow['CollectionNumber'];
   this.shortReference = databaseRow['ShortName'];
   this.fullReference = databaseRow['FullReference'];
+  this.stratUnit = databaseRow['Stratum'];
+  this.maxAge = databaseRow['MaxAge'];
+  this.maxAgeType = databaseRow['MaxAgeType'];
+  this.maxAgeTypeDetails = databaseRow['MaxAgeTypeOtherDetails'];
+  this.minAge = databaseRow['MinAge'];
+  this.minAgeType = databaseRow['MinAgeType'];
+  this.minAgeTypeDetails = databaseRow['MinAgeTypeOtherDetails'];
+  this.locationRelativeToNode= databaseRow['FossilLocationRelativeToNode'];
+}
 
-  // Fossil Strat Unit
-  // Fossil Max
-  // Fossil Min
-  // Fossil Position
 }
 
 /*
@@ -78,8 +61,9 @@ function Calibrations() {
     });
   }
 
-  function getFossilsForCalibrationId(calibrationId, callback) {
-    var queryString = 'SELECT F.* from Link_CalibrationFossil L, View_Fossils F WHERE L.CalibrationId = ? AND L.FossilID = F.FossilID';
+  // Fetch Fossils for a calibration from the database and produce a list of fossils
+  function fetchFossils(calibrationId, callback) {
+    var queryString = 'SELECT F.*, L.* from Link_CalibrationFossil L, View_Fossils F WHERE L.CalibrationId = ? AND L.FossilID = F.FossilID';
     query(queryString, [calibrationId], function(err, results) {
       if(err) {
         callback(null,err);
