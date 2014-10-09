@@ -51,23 +51,24 @@ function Calibration(databaseRow) {
 
 function Calibrations() {
   var TABLE_NAME = 'View_Calibrations';
+  // this callback is err, rows, fields
   function query(queryString, queryParams, callback) {
     return pool.query(queryString, queryParams, callback);
   }
 
   // Fetches a calibration and populates its fossils
   function getCalibration(calibrationId, callback) {
-    fetchCalibration(calibrationId, function(calibration, err) {
+    fetchCalibration(calibrationId, function(err, calibration) {
       if(err) {
-        callback(null, err);
+        callback(err);
       } else {
         // attach fossils
-        fetchFossils(calibrationId, function (fossils, err) {
+        fetchFossils(calibrationId, function (err, fossils) {
           if (err) {
-            callback(null, err);
+            callback(err);
           } else {
             calibration.fossils = fossils;
-            callback(calibration);
+            callback(null, calibration);
           }
         });
         // tips
@@ -116,14 +117,14 @@ function Calibrations() {
       callback(null, err);
     };
 
-    query(queryString, [params.min, params.max], function(err, results) {
+    query(queryString, [params.min, params.max], function(results, err) {
       if(err) {
         failed(err);
         return;
       }
       results.forEach(function(result, index, array) {
       var calibrationId = result['CalibrationID'];
-        getCalibration(calibrationId, function(calibration, err) {
+        getCalibration(calibrationId, function(err, calibration) {
           if(err) {
             failed(err);
             return;
