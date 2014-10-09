@@ -55,7 +55,28 @@ function Calibrations() {
     return pool.query(queryString, queryParams, callback);
   }
 
-  function getCalibrationWithId(calibrationId, callback) {
+  // Fetches a calibration and populates its fossils
+  function getCalibration(calibrationId, callback) {
+    fetchCalibration(calibrationId, function(calibration, err) {
+      if(err) {
+        callback(null, err);
+      } else {
+        // attach fossils
+        fetchFossils(calibrationId, function (fossils, err) {
+          if (err) {
+            callback(null, err);
+          } else {
+            calibration.fossils = fossils;
+            callback(calibration);
+          }
+        });
+        // tips
+      }
+    });
+  }
+
+  // Fetch a single calibration from the database by ID and produce a single object
+  function fetchCalibration(calibrationId, callback) {
     var queryString = 'SELECT * FROM ' + TABLE_NAME + ' WHERE CalibrationID = ?';
     query(queryString, [calibrationId], function(err, results) {
       if(err) {
@@ -80,25 +101,10 @@ function Calibrations() {
     });
   }
 
-  this.findById = function(calibration_id, callback) {
-    getCalibrationWithId(calibration_id, function(calibration, err) {
-        if(err) {
-           callback(null, err);
-        } else {
-          // attach fossils
-          getFossilsForCalibrationId(calibration_id, function (fossils, err) {
-            if (err) {
-              callback(null, err);
-            } else {
-              calibration.fossils = fossils;
-              callback(calibration);
-            }
-          });
-          // tips
-        }
-      }
-    );
+  this.findById = function(calibrationId, callback) {
+    getCalibration(calibrationId, callback);
   };
+
   this.findByFilter = function(params, callback) {
     var queryString = 'SELECT CalibrationID FROM ' + TABLE_NAME + ' WHERE minAge > ? AND maxAge < ?';
     var calibrationResults = [];
@@ -117,26 +123,19 @@ function Calibrations() {
       }
       results.forEach(function(result, index, array) {
       var calibrationId = result['CalibrationID'];
-        getCalibrationWithId(calibrationId, function(calibration, err) {
+        getCalibration(calibrationId, function(calibration, err) {
           if(err) {
             failed(err);
             return;
           }
-          getFossilsForCalibrationId(calibrationId, function(fossils, err) {
-            if(err) {
-              failed(err);
-              return;
-            }
-            calibration.fossils = fossils;
-            calibrationResults.push(calibration);
-            // If this is the last one, finish everything up
-            // This is done because mysql results are async
-            // Could use the async node module to help a little bit, but this works for now
-            if(index == array.length - 1) {
-              success(calibrationResults);
-              return;
-            }
-          });
+          calibrationResults.push(calibration);
+          // If this is the last one, finish everything up
+          // This is done because mysql results are async
+          // Could use the async node module to help a little bit, but this works for now
+          if(index == array.length - 1) {
+            success(calibrationResults);
+            return;
+          }
         });
       });
     });
