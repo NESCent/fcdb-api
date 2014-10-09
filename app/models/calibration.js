@@ -141,6 +141,89 @@ function Calibrations() {
       });
     });
   };
+
+  // Calls callback with something like {'source':'NCBI', 'taxonid': 4}:
+  function fetchNCBITaxonId(ncbiTaxonName, callback) {
+    var queryString = 'SELECT taxonid, \'NCBI\' AS source FROM NCBI_names WHERE '
+      + 'name LIKE ? OR uniquename LIKE ? LIMIT 1';
+    query(queryString, [ncbiTaxonName, ncbiTaxonName], function(err, results) {
+      if (err) {
+        callback(err);
+      } else {
+        callback(null, results.length > 0 ? results[0] : null);
+      }
+    });
+    // php code will fall back to FCD names
+  }
+
+  function fetchMultiTree(source, taxonId, callback) {
+    var queryString = 'SELECT getMultiTreeNodeID(?,?)';
+    query(queryString, [source, taxonId], function (err, results) {
+      if (err) {
+        callback(err);
+      } else {
+        // TODO: get the stored procedure values. results doesn't contain them.
+        callback(null, results.length > 0 ? results[0] : null);
+      }
+    });
+  }
+
+  this.findByClade = function(params, callback) {
+    // Search by clade.
+    // Starts with a clade/taxon name
+    var success = function(result) {
+      callback(result);
+    };
+
+    var failed = function(err) {
+      callback(null, err);
+    };
+
+    var taxonName = params.clade;
+    fetchNCBITaxonId(taxonName, function(err, taxon) {
+      // have a taxon id, now get the multi tree from the taxon
+      if (err) {
+        failed(err);
+        return;
+      }
+      if(!taxon) {
+        failed({error:'No node found for ' + taxonName});
+        return;
+      }
+      fetchMultiTree(taxon.source, taxon.taxonid, function(err, multitree) {
+        if (err) {
+          failed(err);
+          return;
+        }
+        // have a multi tree, now see what calibrations are in it.
+        var calibrationResults = [];
+        fetchCalibrationIdsInMultiTree(multitree, function(err, calibrationIds) {
+          calibrationIds.forEach(function(result, index, array) {
+            var calibrationId = result['CalibrationID'];
+            getCalibration(calibrationId, function(err, calibration) {
+              if(err) {
+                failed(err);
+                return;
+              }
+              calibrationResults.push(calibration);
+              if(index == array.length - 1) {
+                success(calibrationResults);
+                return;
+              }
+            });
+          });
+        });
+      });
+
+    });
+    // Current algorithm in PHP:
+    // calls nameToMultitreeID to get the multi tree ID from a clade name
+      // calls nameToSourceNodeInfo with the taxon name
+      // returns a multiTreeID. Prefixes this with 'mID:' and saves it in nodeValues
+    // calls getAllCalibrationsInClade with the multitree id
+    // adds calibrations to a result array
+
+  };
 }
 
 module.exports = new Calibrations();
