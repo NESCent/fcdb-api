@@ -23,6 +23,12 @@ function Fossil(databaseRow) {
   this.locationRelativeToNode= databaseRow['FossilLocationRelativeToNode'];
 }
 
+/*
+  Creates a TipPair object from a database row
+ */
+
+function TipPair(databaseRow) {
+
 }
 
 /*
