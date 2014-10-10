@@ -107,7 +107,13 @@ function Calibrations() {
   }
 
   this.findById = function(calibrationId, callback) {
-    getCalibration(calibrationId, callback);
+    getCalibration(calibrationId, function(err, calibration) {
+      if (err) {
+        callback(null, err);
+      } else {
+        callback(calibration);
+      }
+    });
   };
 
   this.findByFilter = function(params, callback) {
