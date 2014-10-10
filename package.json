@@ -1,5 +1,5 @@
 {
-  "name": "node-api",
+  "name": "fcdb-api",
   "main": "server.js",
   "dependencies": {
     "body-parser": "~1.0.1",
