@@ -44,6 +44,14 @@ router.route('/calibrations')
           res.json(calibrations);
         }
       });
+    } else if(req.query.hasOwnProperty('clade')) {
+      Calibration.findByClade(req.query, function(err, calibrations) {
+        if (err) {
+          res.send(err);
+        } else {
+          res.json(calibrations);
+        }
+      });
     }
   });
 

@@ -35,6 +35,9 @@ function TipPair(databaseRow) {
   Creates a calibration object from a database row
  */
 function Calibration(databaseRow) {
+  if(!databaseRow) {
+    return;
+  }
   // Properties to fill
   this.nodeName = databaseRow['NodeName'];
   this.nodeMinAge = databaseRow['MinAge'];
@@ -72,6 +75,7 @@ function Calibrations() {
           }
         });
         // tips
+        // images
       }
     });
   }
@@ -156,14 +160,27 @@ function Calibrations() {
     // php code will fall back to FCD names
   }
 
-  function fetchMultiTree(source, taxonId, callback) {
-    var queryString = 'SELECT getMultiTreeNodeID(?,?)';
+  function fetchMultiTreeNodeId(source, taxonId, callback) {
+    var queryString = 'SELECT getMultiTreeNodeID(?,?) AS node_id';
     query(queryString, [source, taxonId], function (err, results) {
       if (err) {
         callback(err);
       } else {
-        // TODO: get the stored procedure values. results doesn't contain them.
-        callback(null, results.length > 0 ? results[0] : null);
+        // Results resemble this:
+        // getMultiTreeNodeID('FCD-116',241); -> [{'node_id' : -1}]
+        callback(null, results.length > 0 ? results[0].node_id : null);
+      }
+    });
+  }
+
+  function fetchCalibrationIdsInCladeMultiTree(multiTreeNodeId, callback) {
+    var queryString = 'SELECT DISTINCT calibration_id FROM calibrations_by_NCBI_clade WHERE clade_root_multitree_id = ?';
+    query(queryString, [multiTreeNodeId], function(err, results) {
+      if (err) {
+        callback(err);
+      } else {
+        var extractedIds = results.map(function(result) { return result['calibration_id']; });
+        callback(null, extractedIds);
       }
     });
   }
@@ -190,16 +207,15 @@ function Calibrations() {
         failed({error:'No node found for ' + taxonName});
         return;
       }
-      fetchMultiTree(taxon.source, taxon.taxonid, function(err, multitree) {
+      fetchMultiTreeNodeId(taxon.source, taxon.taxonid, function(err, multiTreeNodeId) {
         if (err) {
           failed(err);
           return;
         }
         // have a multi tree, now see what calibrations are in it.
         var calibrationResults = [];
-        fetchCalibrationIdsInMultiTree(multitree, function(err, calibrationIds) {
-          calibrationIds.forEach(function(result, index, array) {
-            var calibrationId = result['CalibrationID'];
+        fetchCalibrationIdsInCladeMultiTree(multiTreeNodeId, function(err, calibrationIds) {
+          calibrationIds.forEach(function(calibrationId, index, array) {
             getCalibration(calibrationId, function(err, calibration) {
               if(err) {
                 failed(err);
