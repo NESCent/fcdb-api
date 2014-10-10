@@ -23,6 +23,23 @@ var port = process.env.PORT || 8081; 		// set our port
 // =============================================================================
 var router = express.Router(); 				// get an instance of the express Router
 
+var sendResponsePayload = function(payload, res, format) {
+  if(format === 'csv') {
+    var output = csv.createWriteStream({headers:true});
+    res.set({'Content-Type': 'text/csv'});
+    // Include content-type header
+    output.pipe(res);
+    if(Array.isArray(payload)) {
+      payload.forEach(function(element) { output.write(element); });
+    } else {
+      output.write(payload);
+    }
+    output.end();
+  } else {
+    res.json(payload);
+  }
+};
+
 // Routes for our API will happen here
 router.route('/calibrations/:calibration_id')
   .get(function(req, res) {
@@ -30,10 +47,7 @@ router.route('/calibrations/:calibration_id')
       if (err) {
         res.send(err);
       } else {
-        var output = csv.createWriteStream({headers:true});
-        output.pipe(res);
-        output.write(calibration);
-        output.end();
+        sendResponsePayload(calibration, res, req.query.hasOwnProperty('format') ? req.query.format : null);
       }
     });
   });
@@ -45,7 +59,7 @@ router.route('/calibrations')
         if (err) {
           res.send(err);
         } else {
-          res.json(calibrations);
+          sendResponsePayload(calibrations, res, req.query.hasOwnProperty('format') ? req.query.format : null);
         }
       });
     } else if(req.query.hasOwnProperty('clade')) {
@@ -53,7 +67,7 @@ router.route('/calibrations')
         if (err) {
           res.send(err);
         } else {
-          res.json(calibrations);
+          sendResponsePayload(calibrations, res, req.query.hasOwnProperty('format') ? req.query.format : null);
         }
       });
     }
