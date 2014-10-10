@@ -7,6 +7,7 @@
 var express     = require('express'); 		// call express
 var app         = express(); 				// define our app using express
 var bodyParser  = require('body-parser');
+var csv         = require('fast-csv');
 
 // Our models
 var Calibration = require('./app/models/calibration');
@@ -29,7 +30,10 @@ router.route('/calibrations/:calibration_id')
       if (err) {
         res.send(err);
       } else {
-        res.json(calibration);
+        var output = csv.createWriteStream({headers:true});
+        output.pipe(res);
+        output.write(calibration);
+        output.end();
       }
     });
   });

@@ -4,6 +4,7 @@
   "dependencies": {
     "body-parser": "~1.0.1",
     "express": "~4.0.0",
+    "fast-csv": "^0.5.2",
     "mysql": "^2.5.1"
   },
   "repository": {
