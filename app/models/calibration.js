@@ -85,10 +85,10 @@ function Calibrations() {
     var queryString = 'SELECT * FROM ' + TABLE_NAME + ' WHERE CalibrationID = ?';
     query(queryString, [calibrationId], function(err, results) {
       if(err) {
-        callback(null,err);
+        callback(err);
       } else {
         var calibrationResult = new Calibration(results[0]);
-        callback(calibrationResult);
+        callback(null, calibrationResult);
       }
     });
   }
@@ -98,10 +98,10 @@ function Calibrations() {
     var queryString = 'SELECT F.*, L.* from Link_CalibrationFossil L, View_Fossils F WHERE L.CalibrationId = ? AND L.FossilID = F.FossilID';
     query(queryString, [calibrationId], function(err, results) {
       if(err) {
-        callback(null,err);
+        callback(err);
       } else {
         var fossilResults = results.map(function(result) { return new Fossil(result); });
-        callback(fossilResults);
+        callback(null, fossilResults);
       }
     });
   }
@@ -109,9 +109,9 @@ function Calibrations() {
   this.findById = function(calibrationId, callback) {
     getCalibration(calibrationId, function(err, calibration) {
       if (err) {
-        callback(null, err);
+        callback(err);
       } else {
-        callback(calibration);
+        callback(null, calibration);
       }
     });
   };
@@ -120,14 +120,14 @@ function Calibrations() {
     var queryString = 'SELECT CalibrationID FROM ' + TABLE_NAME + ' WHERE minAge > ? AND maxAge < ?';
     var calibrationResults = [];
     var success = function(result) {
-      callback(result);
+      callback(null, result);
     };
 
     var failed = function(err) {
-      callback(null, err);
+      callback(err);
     };
 
-    query(queryString, [params.min, params.max], function(results, err) {
+    query(queryString, [params.min, params.max], function(err, results) {
       if(err) {
         failed(err);
         return;
@@ -195,11 +195,11 @@ function Calibrations() {
     // Search by clade.
     // Starts with a clade/taxon name
     var success = function(result) {
-      callback(result);
+      callback(null, result);
     };
 
     var failed = function(err) {
-      callback(null, err);
+      callback(err);
     };
 
     var taxonName = params.clade;
