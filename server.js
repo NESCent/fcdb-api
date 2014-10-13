@@ -70,6 +70,8 @@ router.route('/calibrations')
           sendResponsePayload(calibrations, res, req.query.hasOwnProperty('format') ? req.query.format : null);
         }
       });
+    } else {
+      res.send({'error':'Please use a filter or calibration id'});
     }
   });
 
