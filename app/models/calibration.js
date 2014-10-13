@@ -39,6 +39,7 @@ function Calibration(databaseRow) {
     return;
   }
   // Properties to fill
+  this.id = databaseRow['CalibrationID'];
   this.nodeName = databaseRow['NodeName'];
   this.nodeMinAge = databaseRow['MinAge'];
   this.nodeMaxAge = databaseRow['MaxAge'];
