@@ -83,10 +83,12 @@ function Calibrations() {
 
   // Fetch a single calibration from the database by ID and produce a single object
   function fetchCalibration(calibrationId, callback) {
-    var queryString = 'SELECT * FROM ' + TABLE_NAME + ' WHERE CalibrationID = ?';
+    var queryString = 'SELECT * FROM ' + TABLE_NAME + ' WHERE CalibrationID = ? LIMIT 1';
     query(queryString, [calibrationId], function(err, results) {
       if(err) {
         callback(err);
+      } else if(results.length == 0) {
+        callback({'error': 'Calibration with id ' + calibrationId + ' not found'});
       } else {
         var calibrationResult = new Calibration(results[0]);
         callback(null, calibrationResult);
