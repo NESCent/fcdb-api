@@ -1,0 +1,40 @@
+FORMAT: 1A
+
+# fcdb-api
+
+fcdb-api is a REST interace to the [Fossil Calibrations database](https://github.com/NESCent/FossilCalibrations)
+
+# Group Calibrations
+Calibrations related resources of the **fcdb-api**
+
+## Calibrations Collection [/calibrations{?filter,clade,format}]
+
++ Parameters
+    + filter (optional, string) ... Type of filter - currently supports age, include max= and min= for Ma ages.
+    + clade (optional, string) ... Name of taxon identifying clade to search for calibrations in
+    + format (optional, string, `json`) ... Format to return - supports `json` or `csv`, defaults to `json`
+
+### Filter Calibrations [GET]
+
++ Response 200 (application/json)
+
+        [
+         {"id":1,"nodeName":"node1","nodeMinAge":0,"nodeMaxAge":20,"calibrationReference":"Smith, J 2014. Title","fossils":[],"tipPairs":[]}, 
+         {"id":2,"nodeName":"node2","nodeMinAge":10,"nodeMaxAge":20,"calibrationReference":"Smith, J 2014. Title","fossils":[],"tipPairs":[]}
+        ]
+
+
+## Calibration [/calibrations/{id}{?format}]
+A single Calibration object with its details
+
++ Parameters
+    + id (required, number, `1`) ... Numeric `id` of the Calibration to perform action with.
+    + format (optional, string, `json`) ... Format to return - supports `json` or `csv`, defaults to `json`
+
+### Retrieve a Calibration [GET]
+
++ Response 200 (application/json)
+
+        {"id":1,"nodeName":"node1","nodeMinAge":0,"nodeMaxAge":20,"calibrationReference":"Smith, J 2014. Title","fossils":[],"tipPairs":[]}
+
+
