@@ -19,6 +19,13 @@ Calibrations related resources of the **fcdb-api**
 
 ### Filter Calibrations [GET]
 
+#### Samples
+
+- GET /api/v1/calibrations?geologicalTime=Neogene
+- GET /api/v1/calibrations?minAge=10&maxAge=35
+- GET /api/v1/calibrations.csv?clade=Primates
+- GET /api/v1/calibrations?tipTaxa[]=dog&tipTaxa[]=cat
+
 Returns calibrations in the database, maching the optional filter parameters.
 
 + Response 200 (application/json)
@@ -27,6 +34,7 @@ Returns calibrations in the database, maching the optional filter parameters.
          {"id":1,"nodeName":"node1","nodeMinAge":0,"nodeMaxAge":20,"calibrationReference":"Smith, J 2014. Title","fossils":[],"tipPairs":[]}, 
          {"id":2,"nodeName":"node2","nodeMinAge":10,"nodeMaxAge":20,"calibrationReference":"Smith, J 2014. Title","fossils":[],"tipPairs":[]}
         ]
+
 
 ## Calibration [/calibrations/{id}{?.format}]
 A single Calibration object with its details
