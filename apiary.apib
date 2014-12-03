@@ -2,19 +2,24 @@ FORMAT: 1A
 HOST: http://fossilcalibrations.org/api/v1/
 
 # fcdb-api 
-fcdb-api is a REST interace to the [Fossil Calibrations database](https://github.com/NESCent/FossilCalibrations)
+fcdb-api is a read-only REST interace to the [Fossil Calibrations database](https://github.com/NESCent/FossilCalibrations)
 
 # Group Calibrations
 Calibrations related resources of the **fcdb-api**
 
-## Calibrations Collection [/calibrations{?filter,clade,format}]
+## Calibrations Collection [/calibrations{?.format}{?maxAge,minAge,clade,tipTaxa%5B%5D,geologicalTime}]
 
 + Parameters
-    + filter (optional, string) ... Type of filter - currently supports age, include max= and min= for Ma ages.
-    + clade (optional, string) ... Name of taxon identifying clade to search for calibrations in
+    + maxAge (optional, string) ... Maximum (oldest) calibration age in Ma.
+    + minAge (optional, string) ... Minimum (youngest) calibration age in Ma.
+    + clade (optional, string) ... Name of taxon identifying clade in which to search
+    + tipTaxa%5B%5D (optional, array) ... Up to 2 taxa to use when performing an MRCA search.
+    + geologicalTime (optional, string) ... Geological time period
     + format (optional, string, `json`) ... Format to return - supports `json` or `csv`, defaults to `json`
 
 ### Filter Calibrations [GET]
+
+Returns calibrations in the database, maching the optional filter parameters.
 
 + Response 200 (application/json)
 
@@ -23,8 +28,7 @@ Calibrations related resources of the **fcdb-api**
          {"id":2,"nodeName":"node2","nodeMinAge":10,"nodeMaxAge":20,"calibrationReference":"Smith, J 2014. Title","fossils":[],"tipPairs":[]}
         ]
 
-
-## Calibration [/calibrations/{id}{?format}]
+## Calibration [/calibrations/{id}{?.format}]
 A single Calibration object with its details
 
 + Parameters
