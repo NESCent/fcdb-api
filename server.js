@@ -52,6 +52,14 @@ router.route('/calibrations/:calibration_id')
     });
   });
 
+var getFormat = function(req) {
+    if(req.query.hasOwnProperty('format')) {
+      return req.query.format;
+    } else {
+      return null;
+    }
+};
+
 router.route('/calibrations')
   .get(function(req, res) {
     if(req.query.hasOwnProperty('filter')) {
@@ -59,7 +67,7 @@ router.route('/calibrations')
         if (err) {
           res.send(err);
         } else {
-          sendResponsePayload(calibrations, res, req.query.hasOwnProperty('format') ? req.query.format : null);
+          sendResponsePayload(calibrations, res, getFormat(req));
         }
       });
     } else if(req.query.hasOwnProperty('clade')) {
@@ -67,7 +75,7 @@ router.route('/calibrations')
         if (err) {
           res.send(err);
         } else {
-          sendResponsePayload(calibrations, res, req.query.hasOwnProperty('format') ? req.query.format : null);
+          sendResponsePayload(calibrations, res, getFormat(req));
         }
       });
     } else {
