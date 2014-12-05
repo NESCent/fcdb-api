@@ -60,27 +60,16 @@ var getFormat = function(req) {
     }
 };
 
+
 router.route('/calibrations')
   .get(function(req, res) {
-    if(req.query.hasOwnProperty('filter')) {
-      Calibration.findByFilter(req.query, function(err, calibrations) {
-        if (err) {
-          res.send(err);
-        } else {
-          sendResponsePayload(calibrations, res, getFormat(req));
-        }
-      });
-    } else if(req.query.hasOwnProperty('clade')) {
-      Calibration.findByClade(req.query, function(err, calibrations) {
-        if (err) {
-          res.send(err);
-        } else {
-          sendResponsePayload(calibrations, res, getFormat(req));
-        }
-      });
-    } else {
-      res.send({'error':'Please use a filter or calibration id'});
-    }
+    Calibration.query(req.query, function(err, calibrations) {
+      if (err) {
+        res.send(err);
+      } else {
+        sendResponsePayload(calibrations, res, getFormat(req));
+      }
+    });
   });
 
 // REGISTER OUR ROUTES -------------------------------

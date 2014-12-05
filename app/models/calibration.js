@@ -119,6 +119,181 @@ function Calibrations() {
     });
   };
 
+  function intersection_destructive(a, b)
+  {
+    var result = new Array();
+    while( a.length > 0 && b.length > 0 )
+    {
+      if      (a[0] < b[0] ){ a.shift(); }
+      else if (a[0] > b[0] ){ b.shift(); }
+      else /* they're equal */
+      {
+        result.push(a.shift());
+        b.shift();
+      }
+    }
+
+    return result;
+  }
+
+  /*
+    Calibrations can be searched by taxon/clade or age/geological period
+   */
+  this.query = function(params, callback) {
+    // avoid closure conflicts
+    var thisCalibration = this;
+
+    // Convenience functions for ultimate success/failure
+    var success = function(results) {
+      callback(null, results);
+    };
+
+    var failed = function(err) {
+      callback(err);
+    };
+
+    /*
+     * The individual search methods will return IDs of calibration
+     * objects in the database. These will be tracked in an array and intersected
+     * as subsequent filters are added.
+     * Initially this is null, to indicate uninitialized, rather than an empty array,
+     * which would never intersect with anything.
+     */
+    var filteredCalibrationIds = null;
+
+    /*
+     Merge (destructively) onto the filteredCalibrationIds array
+     first time this is called (when filteredCalibrationIds is null) it will
+     replace the array. On subsequent calls, it will intersect it
+     */
+    var mergeCalibrationIds = function(calibrationIds) {
+      // If first call, replace the array
+      // This is different than an empty array!
+      if(filteredCalibrationIds === null) {
+        filteredCalibrationIds = calibrationIds;
+      } else {
+        filteredCalibrationIds = intersection_destructive(filteredCalibrationIds, calibrationIds);
+      }
+    };
+
+     // convenience/refactored. Handles callback logic around merging
+    var handleCalibrationIds = function(handleErr, calibrationIds, callback) {
+      if(handleErr) {
+        failed(handleErr);
+      } else {
+        mergeCalibrationIds(calibrationIds);
+        callback();
+      }
+    };
+
+    /*
+     * Should be the last step in the chain. After all filters are applied, we'll
+     * have an array of calibration IDs. turn these into full objects and call success.
+     */
+    var populateCalibrations = function() {
+      thisCalibration.populateCalibrations(filteredCalibrationIds, function(err, calibrations) {
+        if(err) {
+          failed(err);
+        } else {
+          success(calibrations);
+        }
+      });
+    };
+
+    /*
+     * Individual filters
+     * 1. Age (min/max or geological time)
+     * 2. Tree (clade or tipTaxa)
+     * These will actually happen in reverse order, because callbacks have to be
+     * written in reverse order
+     */
+
+    // 1. Age Search
+    var ageSearchDone = function() {
+      // age search is the last one, populate the calibrations and finish.
+      populateCalibrations();
+    };
+
+    var handleAgeResults = function(ageErr, calibrationIds) {
+      handleCalibrationIds(ageErr, calibrationIds, ageSearchDone);
+    };
+
+    // parse age search parameters. If no parameters (default case) we're done
+    var doAgeSearch = function() {
+      ageSearchDone();
+    };
+
+    // 'geologicalTime' and 'minAge/maxAge' are mutually exclusive
+    if(params.hasOwnProperty('geologicalTime')) {
+      doAgeSearch = function() {
+        thisCalibration.findByGeologicalTime(params.geologicalTime, handleAgeResults)
+      }
+    } else if(params.hasOwnProperty('minAge') || params.hasOwnProperty('maxAge')) {
+      doAgeSearch = function() {
+        thisCalibration.findByMinMax(params.minAge, params.maxAge, handleAgeResults)
+      }
+    }
+
+    // 2. Tree search
+    var treeSearchDone = function() {
+      // after tree search, do age search
+      doAgeSearch();
+    };
+
+    var handleTreeResults = function(treeErr, calibrationIds) {
+      handleCalibrationIds(treeErr, calibrationIds, treeSearchDone);
+    };
+
+    // parse tree search parameters. If no parameters (default case), we're done
+    var doTreeSearch = function() {
+      treeSearchDone(null);
+    };
+
+    // 'clade' and 'taxonA/taxonB' are mutually exclusive
+    if(params.hasOwnProperty('clade')) {
+      doTreeSearch = function() {
+        thisCalibration.findByClade(params.clade, handleTreeResults);
+      };
+    } else if(params.hasOwnProperty('tipTaxa')) {
+      doTreeSearch = function() {
+        thisCalibration.findByTipTaxa(tipTaxa, handleTreeResults);
+      };
+    }
+
+    // All callbacks in place, start!
+    doTreeSearch();
+  };
+
+  // Call the database to populate all the calibrations in the array of ids
+  this.populateCalibrations = function(calibrationIds, callback) {
+    var calibrations = [];
+    calibrationIds.forEach(function(calibrationId, index, array) {
+      getCalibration(calibrationId, function(err, calibration) {
+        if(err) {
+          callback(err);
+          return;
+        }
+        calibrations.push(calibration);
+        if(index == array.length - 1) {
+          callback(null, calibrations);
+          return;
+        }
+      });
+    });
+  };
+
+  /* Age Search implementation */
+
+  // Gets the calibration IDs in the range and passes along to the callback
+  this.findByMinMax = function(minAge, maxAge, callback) {
+    callback({error : 'find by min max not yet implemented'});
+  };
+
+  this.findByGeologicalTime = function(geologicalTime, callback) {
+    callback({error : 'find by geological time not yet implemented'});
+  };
+
+  // This needs to move to findByMinMax and be refactored
   this.findByFilter = function(params, callback) {
     var queryString = 'SELECT CalibrationID FROM ' + TABLE_NAME + ' WHERE minAge > ? AND maxAge < ?';
     var calibrationResults = [];
@@ -155,6 +330,7 @@ function Calibrations() {
     });
   };
 
+  /* Tree search implementation */
   // Calls callback with something like {'source':'NCBI', 'taxonid': 4}:
   function fetchNCBITaxonId(ncbiTaxonName, callback) {
     var queryString = 'SELECT taxonid, \'NCBI\' AS source FROM NCBI_names WHERE '
@@ -194,61 +370,37 @@ function Calibrations() {
     });
   }
 
-  this.findByClade = function(params, callback) {
-    // Search by clade.
+  // Callback is (err, calibrationIds)
+  this.findByClade = function(taxonName, callback) {
     // Starts with a clade/taxon name
-    var success = function(result) {
-      callback(null, result);
-    };
-
-    var failed = function(err) {
-      callback(err);
-    };
-
-    var taxonName = params.clade;
     fetchNCBITaxonId(taxonName, function(err, taxon) {
       // have a taxon id, now get the multi tree from the taxon
       if (err) {
-        failed(err);
+        callback(err);
         return;
       }
       if(!taxon) {
-        failed({error:'No node found for ' + taxonName});
+        callback({error:'No node found for ' + taxonName});
         return;
       }
       fetchMultiTreeNodeId(taxon.source, taxon.taxonid, function(err, multiTreeNodeId) {
         if (err) {
-          failed(err);
+          callback(err);
           return;
         }
         // have a multi tree, now see what calibrations are in it.
         var calibrationResults = [];
         fetchCalibrationIdsInCladeMultiTree(multiTreeNodeId, function(err, calibrationIds) {
-          calibrationIds.forEach(function(calibrationId, index, array) {
-            getCalibration(calibrationId, function(err, calibration) {
-              if(err) {
-                failed(err);
-                return;
-              }
-              calibrationResults.push(calibration);
-              if(index == array.length - 1) {
-                success(calibrationResults);
-                return;
-              }
-            });
-          });
+          callback(err, calibrationIds);
         });
       });
-
     });
-    // Current algorithm in PHP:
-    // calls nameToMultitreeID to get the multi tree ID from a clade name
-      // calls nameToSourceNodeInfo with the taxon name
-      // returns a multiTreeID. Prefixes this with 'mID:' and saves it in nodeValues
-    // calls getAllCalibrationsInClade with the multitree id
-    // adds calibrations to a result array
-
   };
+
+  // Callback is (err, calibrationIds)
+  this.findByTipTaxa = function(tipTaxa, callback) {
+    callback({error:'find by tip taxa not yet implemented'});
+  }
 }
 
 module.exports = new Calibrations();
