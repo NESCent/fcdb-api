@@ -286,17 +286,6 @@ function Calibrations() {
 
   // Gets the calibration IDs in the range and passes along to the callback
   this.findByMinMax = function(minAge, maxAge, callback) {
-    callback({error : 'find by min max not yet implemented'});
-  };
-
-  this.findByGeologicalTime = function(geologicalTime, callback) {
-    callback({error : 'find by geological time not yet implemented'});
-  };
-
-  // This needs to move to findByMinMax and be refactored
-  this.findByFilter = function(params, callback) {
-    var queryString = 'SELECT CalibrationID FROM ' + TABLE_NAME + ' WHERE minAge > ? AND maxAge < ?';
-    var calibrationResults = [];
     var success = function(result) {
       callback(null, result);
     };
@@ -305,29 +294,46 @@ function Calibrations() {
       callback(err);
     };
 
-    query(queryString, [params.min, params.max], function(err, results) {
+    // Must provide either minAge, maxAge, or both.
+    var baseQueryString = 'SELECT CalibrationID FROM ' + TABLE_NAME + ' WHERE ';
+    var clause = [];
+    var params = [];
+    if(minAge != null) {
+      clause.push('minAge > ?');
+      params.push(minAge);
+    }
+    if(maxAge != null) {
+      clause.push('maxAge < ?');
+      params.push(maxAge);
+    }
+
+    if(clause.length === 0) {
+      failed({error:'Cannot find by age unless minAge or maxAge is specified'});
+      return;
+    }
+
+    // Now join the clauses
+    var joinedClause = clause.join(' AND ');
+    var queryString = baseQueryString + joinedClause;
+
+    // Get the calibrationIDs and call the callback with them
+    query(queryString, params, function(err, results) {
       if(err) {
         failed(err);
         return;
       }
-      results.forEach(function(result, index, array) {
-      var calibrationId = result['CalibrationID'];
-        getCalibration(calibrationId, function(err, calibration) {
-          if(err) {
-            failed(err);
-            return;
-          }
-          calibrationResults.push(calibration);
-          // If this is the last one, finish everything up
-          // This is done because mysql results are async
-          // Could use the async node module to help a little bit, but this works for now
-          if(index == array.length - 1) {
-            success(calibrationResults);
-            return;
-          }
-        });
-      });
+      var calibrationIDs = results.map(function(result) { return result['CalibrationID']; });
+      success(calibrationIDs);
     });
+  };
+
+  this.findByGeologicalTime = function(geologicalTime, callback) {
+    callback({error : 'find by geological time not yet implemented'});
+  };
+
+  // This needs to move to findByMinMax and be refactored
+  this.findByFilter = function(params, callback) {
+
   };
 
   /* Tree search implementation */
