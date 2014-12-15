@@ -299,11 +299,13 @@ function Calibrations() {
     var clause = [];
     var params = [];
     if(minAge != null) {
-      clause.push('minAge > ?');
+      clause.push('(MinAge >= ? OR MinAge = 0) AND (MaxAge >= ? OR maxAge = 0)');
+      params.push(minAge);
       params.push(minAge);
     }
     if(maxAge != null) {
-      clause.push('maxAge < ?');
+      clause.push('(MinAge <= ? OR MinAge = 0) AND (MaxAge <= ? OR maxAge = 0)');
+      params.push(maxAge);
       params.push(maxAge);
     }
 
