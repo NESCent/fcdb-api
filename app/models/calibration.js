@@ -333,11 +333,6 @@ function Calibrations() {
     callback({error : 'find by geological time not yet implemented'});
   };
 
-  // This needs to move to findByMinMax and be refactored
-  this.findByFilter = function(params, callback) {
-
-  };
-
   /* Tree search implementation */
   // Calls callback with something like {'source':'NCBI', 'taxonid': 4}:
   function fetchNCBITaxonId(ncbiTaxonName, callback) {
