@@ -75,8 +75,8 @@ function Calibrations() {
             callback(null, calibration);
           }
         });
-        // tips
-        // images
+        // TODO: tips
+        // TODO: images
       }
     });
   }
