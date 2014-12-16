@@ -503,6 +503,15 @@ function Calibrations() {
     });
   };
 
+  Array.prototype.nullIndexes = function() {
+    var nulls = [];
+    this.forEach(function(value, index) {
+      if(value === null) {
+        nulls.push(index);
+      }
+    });
+    return nulls;
+  };
   // Callback is (err, calibrationIds)
   this.findByTipTaxa = function(tipTaxa, callback) {
     // tipTaxa is an array of taxon names
@@ -519,10 +528,20 @@ function Calibrations() {
     }
     // 1. Find the taxon ids for each taxon
     async.map(tipTaxa, fetchNCBITaxonId, function(err, taxa) {
-      // TODO: fail if any taxa are not found
+      var nulls = taxa.nullIndexes();
+      if(nulls.length > 0) {
+        var badTaxa = nulls.map(function(index) { return tipTaxa[index]; });
+        failed({error:'Unable to find taxa for: ' + badTaxa.join(', ')});
+        return;
+      }
       // Find the node id in the multi tree
       async.map(taxa, fetchMultiTreeNodeId, function (err, nodeIds) {
-        // TODO: fail if any nodeIds are not found
+        var nulls = nodeIds.nullIndexes();
+        if(nulls.length > 0) {
+          var badTaxa = nulls.map(function(index) { return tipTaxa[index]; });
+          failed({error:'Unable to find node ids for: ' + badTaxa.join(', ')});
+          return;
+        }
         // If there are two taxa, we need to get their MRCA node and fetch ancestors of all 3 nodes
         // If only one taxon, only fetch the ancestors of that node
         var fetchAncestors = function(multiTreeNodeIds) {
