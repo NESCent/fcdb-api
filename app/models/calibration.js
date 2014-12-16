@@ -267,31 +267,9 @@ function Calibrations() {
 
   // Call the database to populate all the calibrations in the array of ids
   this.populateCalibrations = function(calibrationIds, callback) {
-    var failed = function(err) {
-      callback(err);
-    };
-    var succeeded = function(results) {
-      callback(null, results);
-    };
-    var calibrations = [];
-
-    // MySQL data is always provided in callbacks, so use async to tie them all together
-    async.each(calibrationIds, function (calibrationId, callback) {
-      getCalibration(calibrationId, function (err, calibration) {
-        if (err) {
-          callback(err);
-        } else {
-          calibrations.push(calibration);
-          callback();
-        }
-      });
-    }, function(err) {
-      if(err) {
-        failed(err);
-      } else {
-        succeeded(calibrations);
-      }
-    });
+    // MySQL results are always provided in callbacks. async.map executes a transform
+    // function on each item in the array, and calls callback when done.
+    async.map(calibrationIds, getCalibration, callback);
   };
 
   /* Age Search implementation */
