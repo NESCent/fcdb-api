@@ -62,10 +62,19 @@ function Calibrations() {
   }
 
   // Fetches a calibration and populates its fossils
-  function getCalibration(calibrationId, callback) {
+  function getCalibration(calibrationId, callback, failWhenNotFound) {
+    failWhenNotFound = failWhenNotFound || false;
     fetchCalibration(calibrationId, function(err, calibration) {
       if(err) {
         callback(err);
+      } else if(calibration == null) {
+        // not found
+        if(failWhenNotFound) {
+          callback({error: 'calibration with id: ' + calibrationId + ' not found'});
+        } else {
+          // call back with null.
+          callback(null, calibration);
+        }
       } else {
         // attach fossils
         fetchFossils(calibrationId, function (err, fossils) {
@@ -89,7 +98,7 @@ function Calibrations() {
       if(err) {
         callback(err);
       } else if(results.length == 0) {
-        callback({'error': 'Calibration with id ' + calibrationId + ' not found'});
+        callback(null, null);
       } else {
         var calibrationResult = new Calibration(results[0]);
         callback(null, calibrationResult);
@@ -117,7 +126,7 @@ function Calibrations() {
       } else {
         callback(null, calibration);
       }
-    });
+    }, true);
   };
 
   function intersection_destructive(a, b)
