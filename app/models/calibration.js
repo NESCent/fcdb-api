@@ -1,6 +1,7 @@
 var mysql  = require('mysql');
 var connectionParams = require('../../config/connectionParams');
 var pool  = mysql.createPool(connectionParams);
+var async = require('async');
 
 /*
   Creates a Fossil object from a database row
@@ -266,19 +267,30 @@ function Calibrations() {
 
   // Call the database to populate all the calibrations in the array of ids
   this.populateCalibrations = function(calibrationIds, callback) {
+    var failed = function(err) {
+      callback(err);
+    };
+    var succeeded = function(results) {
+      callback(null, results);
+    };
     var calibrations = [];
-    calibrationIds.forEach(function(calibrationId, index, array) {
-      getCalibration(calibrationId, function(err, calibration) {
-        if(err) {
+
+    // MySQL data is always provided in callbacks, so use async to tie them all together
+    async.each(calibrationIds, function (calibrationId, callback) {
+      getCalibration(calibrationId, function (err, calibration) {
+        if (err) {
           callback(err);
-          return;
-        }
-        calibrations.push(calibration);
-        if(index == array.length - 1) {
-          callback(null, calibrations);
-          return;
+        } else {
+          calibrations.push(calibration);
+          callback();
         }
       });
+    }, function(err) {
+      if(err) {
+        failed(err);
+      } else {
+        succeeded(calibrations);
+      }
     });
   };
 
