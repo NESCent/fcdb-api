@@ -201,10 +201,17 @@ function Calibrations() {
      * have an array of calibration IDs. turn these into full objects and call success.
      */
     var populateCalibrations = function() {
-      thisCalibration.populateCalibrations(filteredCalibrationIds, function(err, calibrations) {
+      var uniqueIds = filteredCalibrationIds.filter(function (value, index, array) {
+        return array.indexOf(value) === index;
+      });
+
+      // uniqueIds is an array of calibration IDs
+      thisCalibration.populateCalibrations(uniqueIds, function(err, calibrations) {
         if(err) {
           failed(err);
         } else {
+          // filter out null values - they indicate no calibration was found for the ID
+          calibrations = calibrations.filter(function(result) { return result !== null; });
           success(calibrations);
         }
       });
