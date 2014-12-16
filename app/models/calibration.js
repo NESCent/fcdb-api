@@ -446,7 +446,31 @@ function Calibrations() {
 
   // Callback is (err, calibrationIds)
   this.findByTipTaxa = function(tipTaxa, callback) {
-    callback({error:'find by tip taxa not yet implemented'});
+    // tipTaxa is an array of taxon names
+    var success = function(result) {
+      callback(null, result);
+    };
+
+    var failed = function(err) {
+      callback(err);
+    };
+    if(tipTaxa.length != 2) {
+      failed({error: 'Must provide 2 tip taxa'});
+      return;
+    }
+    // 1. Find the taxon ids for each taxon
+    async.map(tipTaxa, fetchNCBITaxonId, function(err, taxa) {
+      // TODO: fail if any taxa are not found
+      // Find the node id in the multi tree
+      async.map(taxa, fetchMultiTreeNodeId, function (err, nodeIds) {
+        // TODO: fail if any nodeIds are not found
+        // have the multi tree node ids, now get MRCA
+        fetchMultiTreeNodeForMRCA(nodeIds, function(err, mrcaNode) {
+          console.log('mrca node: ' + JSON.stringify(mrcaNode));
+          callback({error: 'not finished'});
+        });
+      })
+    });
   }
 }
 
