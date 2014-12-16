@@ -421,7 +421,6 @@ function Calibrations() {
           return;
         }
         // have a multi tree, now see what calibrations are in it.
-        var calibrationResults = [];
         fetchCalibrationIdsInCladeMultiTree(multiTreeNodeId, function(err, calibrationIds) {
           callback(err, calibrationIds);
         });
