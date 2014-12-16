@@ -331,6 +331,9 @@ function Calibrations() {
     };
 
     // Via https://github.com/NESCent/FossilCalibrations/blob/b29a0fa6cdfb4c822f60013bde8ace3677a20514/fetch-search-results.php#L418
+    // This query causes the filter to be interpreted very loosely:
+    // For example, 'geologicalTime=C' will be treated as C%, matching everything in Cretaceous, Carboniferous, Cambrian
+    // The parameters should be matched against the times first
     var queryString = 'SELECT CalibrationID FROM Link_CalibrationFossil WHERE FossilID IN ' +
       '(SELECT FossilID FROM fossils WHERE LocalityID IN ' +
       '(SELECT LocalityID FROM localities WHERE GeolTime IN ' +
