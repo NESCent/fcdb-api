@@ -257,7 +257,7 @@ function Calibrations() {
       };
     } else if(params.hasOwnProperty('tipTaxa')) {
       doTreeSearch = function() {
-        thisCalibration.findByTipTaxa(tipTaxa, handleTreeResults);
+        thisCalibration.findByTipTaxa(params.tipTaxa, handleTreeResults);
       };
     }
 
