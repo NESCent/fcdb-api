@@ -319,8 +319,47 @@ function Calibrations() {
     });
   };
 
+  // Gets the calibration IDs corresponding to the comma-separated geological time name
+  // (e.g. Neogene,Miocene,Burdigalian), and passes along to the callback
   this.findByGeologicalTime = function(geologicalTime, callback) {
-    callback({error : 'find by geological time not yet implemented'});
+    var success = function(result) {
+      callback(null, result);
+    };
+
+    var failed = function(err) {
+      callback(err);
+    };
+
+    // Via https://github.com/NESCent/FossilCalibrations/blob/b29a0fa6cdfb4c822f60013bde8ace3677a20514/fetch-search-results.php#L418
+    // This query causes the filter to be interpreted very loosely:
+    // For example, 'geologicalTime=C' will be treated as C%, matching everything in Cretaceous, Carboniferous, Cambrian
+    // The parameters should be matched against the times first
+    var queryString = 'SELECT CalibrationID FROM Link_CalibrationFossil WHERE FossilID IN ' +
+      '(SELECT FossilID FROM fossils WHERE LocalityID IN ' +
+      '(SELECT LocalityID FROM localities WHERE GeolTime IN ' +
+      '(SELECT GeolTimeID FROM geoltime WHERE CONCAT_WS(\',\', Period,Epoch,Age) LIKE CONCAT(?, \'%\'))))';
+    var params = [];
+    // This should be an array
+    if(geologicalTime != null && geologicalTime.length > 0) {
+      // Should be of the format "Period, Epoch, Age"
+      // Period must be provided, Epoch and Age are optional
+      params.push(geologicalTime);
+    }
+
+    if(params.length === 0) {
+      failed({error:'Cannot find by Geological Time unless a time period is specified'});
+      return;
+    }
+
+    // Get the calibrationIDs and call the callback with them
+    query(queryString, params, function(err, results) {
+      if(err) {
+        failed(err);
+        return;
+      }
+      var calibrationIDs = results.map(function(result) { return result['CalibrationID']; });
+      success(calibrationIDs);
+    });
   };
 
   /* Tree search implementation */
