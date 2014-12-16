@@ -390,6 +390,22 @@ function Calibrations() {
     });
   }
 
+  // multiTreeNodeIDs is an array of node ids
+  function fetchMultiTreeNodeForMRCA(multitreeNodeIds, callback) {
+    // Based on getMultitreeIDForMRCA() in
+    // https://github.com/NESCent/FossilCalibrations/blob/b29a0fa6cdfb4c822f60013bde8ace3677a20514/FCD-helpers.php#L155
+    var queryString = 'CALL getMostRecentCommonAncestor(?,?, \'temp_MRCA\', \'ALL TREES\'); SELECT * FROM temp_MRCA';
+    query(queryString , multitreeNodeIds, function(err, results) {
+      // Since queryString has two statements, results will be an array with two objects
+      if(err) {
+        callback(err);
+      } else {
+        // results[1] is an array, looks like [{"node_id":33392,"parent_node_id":33340,"depth":-12}] (or [] if empty!)
+        callback(null, results[1].length > 0 ? results[1][0] : null);
+      }
+    });
+  }
+
   function fetchCalibrationIdsInCladeMultiTree(multiTreeNodeId, callback) {
     var queryString = 'SELECT DISTINCT calibration_id FROM calibrations_by_NCBI_clade WHERE clade_root_multitree_id = ?';
     query(queryString, [multiTreeNodeId], function(err, results) {
