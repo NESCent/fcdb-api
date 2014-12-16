@@ -356,7 +356,8 @@ function Calibrations() {
       }
       var calibrationIDs = results.map(function(result) { return result['CalibrationID']; });
       success(calibrationIDs);
-    });  };
+    });
+  };
 
   /* Tree search implementation */
   // Calls callback with something like {'source':'NCBI', 'taxonid': 4}:
