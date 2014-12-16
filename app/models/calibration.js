@@ -377,9 +377,9 @@ function Calibrations() {
     // php code will fall back to FCD names
   }
 
-  function fetchMultiTreeNodeId(source, taxonId, callback) {
+  function fetchMultiTreeNodeId(taxon, callback) {
     var queryString = 'SELECT getMultiTreeNodeID(?,?) AS node_id';
-    query(queryString, [source, taxonId], function (err, results) {
+    query(queryString, [taxon.source, taxon.taxonid], function (err, results) {
       if (err) {
         callback(err);
       } else {
@@ -415,7 +415,7 @@ function Calibrations() {
         callback({error:'No node found for ' + taxonName});
         return;
       }
-      fetchMultiTreeNodeId(taxon.source, taxon.taxonid, function(err, multiTreeNodeId) {
+      fetchMultiTreeNodeId(taxon, function(err, multiTreeNodeId) {
         if (err) {
           callback(err);
           return;
