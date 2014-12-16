@@ -513,9 +513,8 @@ function Calibrations() {
     var failed = function(err) {
       callback(err);
     };
-    if(tipTaxa.length != 2) {
-      // TODO: handle single taxon
-      failed({error: 'Must provide 2 tip taxa'});
+    if(tipTaxa.length == 0 || tipTaxa.length > 2) {
+      failed({error: 'Must provide 1 or 2 tip taxa'});
       return;
     }
     // 1. Find the taxon ids for each taxon
@@ -524,12 +523,10 @@ function Calibrations() {
       // Find the node id in the multi tree
       async.map(taxa, fetchMultiTreeNodeId, function (err, nodeIds) {
         // TODO: fail if any nodeIds are not found
-        // have the multi tree node ids, now get MRCA
-        fetchMultiTreeNodeForMRCA(nodeIds, function(err, mrcaNode) {
-          // Fetch ancestors of nodes for taxonA, taxonB, and mrca - collect their nodes
-          var nodeIdsToFetch = nodeIds.slice(0); // copy the array
-          nodeIdsToFetch.push(mrcaNode.node_id);
-          async.map(nodeIdsToFetch, fetchMultiTreeAncestors, function(err, ancestors) {
+        // If there are two taxa, we need to get their MRCA node and fetch ancestors of all 3 nodes
+        // If only one taxon, only fetch the ancestors of that node
+        var fetchAncestors = function(multiTreeNodeIds) {
+          async.map(multiTreeNodeIds, fetchMultiTreeAncestors, function(err, ancestors) {
             // ancestors will be 3 arrays of { node_id: 33208, parent_node_id: 33154, depth: -15 },
             // This flattens the array
             async.map(ancestors, function(ancestorNodes, callback) {
@@ -549,8 +546,20 @@ function Calibrations() {
               }
             });
           });
-        });
-      })
+        };
+        // if there is only one tip taxon, just fetchMultiTreeAncestors
+        if(taxa.length == 1) {
+          fetchAncestors(nodeIds)
+        } else {
+          // if there are two node ids, get the multi tree for the mrca
+          fetchMultiTreeNodeForMRCA(nodeIds, function(err, mrcaNode) {
+            // Fetch ancestors of nodes for taxonA, taxonB, and mrca - collect their nodes
+            var nodeIdsToFetch = nodeIds.slice(0); // copy the array
+            nodeIdsToFetch.push(mrcaNode.node_id);
+            fetchAncestors(nodeIdsToFetch);
+          });
+        }
+      });
     });
   }
 }
