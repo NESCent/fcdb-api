@@ -62,10 +62,19 @@ function Calibrations() {
   }
 
   // Fetches a calibration and populates its fossils
-  function getCalibration(calibrationId, callback) {
+  function getCalibration(calibrationId, callback, failWhenNotFound) {
+    failWhenNotFound = failWhenNotFound || false;
     fetchCalibration(calibrationId, function(err, calibration) {
       if(err) {
         callback(err);
+      } else if(calibration == null) {
+        // not found
+        if(failWhenNotFound) {
+          callback({error: 'calibration with id: ' + calibrationId + ' not found'});
+        } else {
+          // call back with null.
+          callback(null, calibration);
+        }
       } else {
         // attach fossils
         fetchFossils(calibrationId, function (err, fossils) {
@@ -89,7 +98,7 @@ function Calibrations() {
       if(err) {
         callback(err);
       } else if(results.length == 0) {
-        callback({'error': 'Calibration with id ' + calibrationId + ' not found'});
+        callback(null, null);
       } else {
         var calibrationResult = new Calibration(results[0]);
         callback(null, calibrationResult);
@@ -117,7 +126,7 @@ function Calibrations() {
       } else {
         callback(null, calibration);
       }
-    });
+    }, true);
   };
 
   function intersection_destructive(a, b)
@@ -192,10 +201,17 @@ function Calibrations() {
      * have an array of calibration IDs. turn these into full objects and call success.
      */
     var populateCalibrations = function() {
-      thisCalibration.populateCalibrations(filteredCalibrationIds, function(err, calibrations) {
+      var uniqueIds = filteredCalibrationIds.filter(function (value, index, array) {
+        return array.indexOf(value) === index;
+      });
+
+      // uniqueIds is an array of calibration IDs
+      thisCalibration.populateCalibrations(uniqueIds, function(err, calibrations) {
         if(err) {
           failed(err);
         } else {
+          // filter out null values - they indicate no calibration was found for the ID
+          calibrations = calibrations.filter(function(result) { return result !== null; });
           success(calibrations);
         }
       });
@@ -257,7 +273,7 @@ function Calibrations() {
       };
     } else if(params.hasOwnProperty('tipTaxa')) {
       doTreeSearch = function() {
-        thisCalibration.findByTipTaxa(tipTaxa, handleTreeResults);
+        thisCalibration.findByTipTaxa(params.tipTaxa, handleTreeResults);
       };
     }
 
@@ -377,15 +393,44 @@ function Calibrations() {
     // php code will fall back to FCD names
   }
 
-  function fetchMultiTreeNodeId(source, taxonId, callback) {
+  function fetchMultiTreeNodeId(taxon, callback) {
     var queryString = 'SELECT getMultiTreeNodeID(?,?) AS node_id';
-    query(queryString, [source, taxonId], function (err, results) {
+    query(queryString, [taxon.source, taxon.taxonid], function (err, results) {
       if (err) {
         callback(err);
       } else {
         // Results resemble this:
         // getMultiTreeNodeID('FCD-116',241); -> [{'node_id' : -1}]
         callback(null, results.length > 0 ? results[0].node_id : null);
+      }
+    });
+  }
+
+  // multiTreeNodeIDs is an array of node ids
+  function fetchMultiTreeNodeForMRCA(multitreeNodeIds, callback) {
+    // Based on getMultitreeIDForMRCA() in
+    // https://github.com/NESCent/FossilCalibrations/blob/b29a0fa6cdfb4c822f60013bde8ace3677a20514/FCD-helpers.php#L155
+    var queryString = 'CALL getMostRecentCommonAncestor(?,?, \'temp_MRCA\', \'ALL TREES\'); SELECT * FROM temp_MRCA';
+    query(queryString , multitreeNodeIds, function(err, results) {
+      // Since queryString has two statements, results will be an array with two objects
+      if(err) {
+        callback(err);
+      } else {
+        // results[1] is an array, looks like [{"node_id":33392,"parent_node_id":33340,"depth":-12}] (or [] if empty!)
+        callback(null, results[1].length > 0 ? results[1][0] : null);
+      }
+    });
+  }
+
+  function fetchMultiTreeAncestors(multiTreeNodeId, callback) {
+    var queryString = 'CALL getAllAncestors(?,\'temp_ancestors\',\'ALL TREES\'); SELECT * from temp_ancestors';
+    query(queryString, [multiTreeNodeId], function(err, results) {
+      // since queryString has two statements, results will be an array with two objects
+      if(err) {
+        callback(err);
+      } else {
+        // results[1] is an array
+        callback(null, results[1].length > 0 ? results[1] : null);
       }
     });
   }
@@ -398,6 +443,36 @@ function Calibrations() {
       } else {
         var extractedIds = results.map(function(result) { return result['calibration_id']; });
         callback(null, extractedIds);
+      }
+    });
+  }
+
+  function fetchCalibrationIdsFromTrees(nodeIds, callback) {
+    // adapted from addAssociatedCalibrations()
+    // via https://github.com/NESCent/FossilCalibrations/blob/b29a0fa6cdfb4c822f60013bde8ace3677a20514/FCD-helpers.php#L313
+    var queryString = 'SELECT * FROM FCD_trees WHERE tree_id IN (SELECT tree_id FROM FCD_nodes WHERE node_id IN (?))';
+    query(queryString, [nodeIds], function(err, results) {
+      if(err) {
+        callback(err);
+      } else {
+        var extractedIds = results.map(function(result) { return result['calibration_id']; });
+        callback(null, extractedIds);
+      }
+    });
+  }
+
+  function fetchSourceNodeIdsFromMultiTree(multiTreeNodeIds, callback) {
+    // adapted from addAssociatedCalibrations()
+    // via https://github.com/NESCent/FossilCalibrations/blob/b29a0fa6cdfb4c822f60013bde8ace3677a20514/FCD-helpers.php#L293
+    var queryString = 'SELECT * FROM node_identity WHERE source_tree != \'NCBI\' AND is_pinned_node = 0 AND multitree_node_id IN (?)';
+    query(queryString, [multiTreeNodeIds], function(err, results) {
+      if(err) {
+        callback(err);
+      } else {
+        var sourceNodeIds = results.map(function (result) {
+          return result['source_node_id']
+        });
+        callback(null, sourceNodeIds);
       }
     });
   }
@@ -415,13 +490,12 @@ function Calibrations() {
         callback({error:'No node found for ' + taxonName});
         return;
       }
-      fetchMultiTreeNodeId(taxon.source, taxon.taxonid, function(err, multiTreeNodeId) {
+      fetchMultiTreeNodeId(taxon, function(err, multiTreeNodeId) {
         if (err) {
           callback(err);
           return;
         }
         // have a multi tree, now see what calibrations are in it.
-        var calibrationResults = [];
         fetchCalibrationIdsInCladeMultiTree(multiTreeNodeId, function(err, calibrationIds) {
           callback(err, calibrationIds);
         });
@@ -429,9 +503,83 @@ function Calibrations() {
     });
   };
 
+  Array.prototype.nullIndexes = function() {
+    var nulls = [];
+    this.forEach(function(value, index) {
+      if(value === null) {
+        nulls.push(index);
+      }
+    });
+    return nulls;
+  };
   // Callback is (err, calibrationIds)
   this.findByTipTaxa = function(tipTaxa, callback) {
-    callback({error:'find by tip taxa not yet implemented'});
+    // tipTaxa is an array of taxon names
+    var success = function(result) {
+      callback(null, result);
+    };
+
+    var failed = function(err) {
+      callback(err);
+    };
+    if(tipTaxa.length == 0 || tipTaxa.length > 2) {
+      failed({error: 'Must provide 1 or 2 tip taxa'});
+      return;
+    }
+    // 1. Find the taxon ids for each taxon
+    async.map(tipTaxa, fetchNCBITaxonId, function(err, taxa) {
+      var nulls = taxa.nullIndexes();
+      if(nulls.length > 0) {
+        var badTaxa = nulls.map(function(index) { return tipTaxa[index]; });
+        failed({error:'Unable to find taxa for: ' + badTaxa.join(', ')});
+        return;
+      }
+      // Find the node id in the multi tree
+      async.map(taxa, fetchMultiTreeNodeId, function (err, nodeIds) {
+        var nulls = nodeIds.nullIndexes();
+        if(nulls.length > 0) {
+          var badTaxa = nulls.map(function(index) { return tipTaxa[index]; });
+          failed({error:'Unable to find node ids for: ' + badTaxa.join(', ')});
+          return;
+        }
+        // If there are two taxa, we need to get their MRCA node and fetch ancestors of all 3 nodes
+        // If only one taxon, only fetch the ancestors of that node
+        var fetchAncestors = function(multiTreeNodeIds) {
+          async.map(multiTreeNodeIds, fetchMultiTreeAncestors, function(err, ancestors) {
+            // ancestors will be 3 arrays of { node_id: 33208, parent_node_id: 33154, depth: -15 },
+            // This flattens the array
+            async.map(ancestors, function(ancestorNodes, callback) {
+              var nodeIds = ancestorNodes.map(function(node) { return node.node_id; });
+              fetchSourceNodeIdsFromMultiTree(nodeIds, function(err, sourceNodeIds) {
+                fetchCalibrationIdsFromTrees(sourceNodeIds, callback);
+              });
+            }, function(err, calibrationIds) {
+              if(err) {
+                failed(err);
+              } else {
+                // calibrationIds will be an array of 3 arrays,
+                // e.g.[ [1,2,3], [4,5,6], [7,8] ]
+                // flatten the array to [1,2,3,4,5,6,7,8]
+                var merged = [].concat.apply([], calibrationIds);
+                success(merged);
+              }
+            });
+          });
+        };
+        // if there is only one tip taxon, just fetchMultiTreeAncestors
+        if(taxa.length == 1) {
+          fetchAncestors(nodeIds)
+        } else {
+          // if there are two node ids, get the multi tree for the mrca
+          fetchMultiTreeNodeForMRCA(nodeIds, function(err, mrcaNode) {
+            // Fetch ancestors of nodes for taxonA, taxonB, and mrca - collect their nodes
+            var nodeIdsToFetch = nodeIds.slice(0); // copy the array
+            nodeIdsToFetch.push(mrcaNode.node_id);
+            fetchAncestors(nodeIdsToFetch);
+          });
+        }
+      });
+    });
   }
 }
 
