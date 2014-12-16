@@ -422,6 +422,19 @@ function Calibrations() {
     });
   }
 
+  function fetchMultiTreeAncestors(multiTreeNodeId, callback) {
+    var queryString = 'CALL getAllAncestors(?,\'temp_ancestors\',\'ALL TREES\'); SELECT * from temp_ancestors';
+    query(queryString, [multiTreeNodeId], function(err, results) {
+      // since queryString has two statements, results will be an array with two objects
+      if(err) {
+        callback(err);
+      } else {
+        // results[1] is an array
+        callback(null, results[1].length > 0 ? results[1] : null);
+      }
+    });
+  }
+
   function fetchCalibrationIdsInCladeMultiTree(multiTreeNodeId, callback) {
     var queryString = 'SELECT DISTINCT calibration_id FROM calibrations_by_NCBI_clade WHERE clade_root_multitree_id = ?';
     query(queryString, [multiTreeNodeId], function(err, results) {
@@ -430,6 +443,36 @@ function Calibrations() {
       } else {
         var extractedIds = results.map(function(result) { return result['calibration_id']; });
         callback(null, extractedIds);
+      }
+    });
+  }
+
+  function fetchCalibrationIdsFromTrees(nodeIds, callback) {
+    // adapted from addAssociatedCalibrations()
+    // via https://github.com/NESCent/FossilCalibrations/blob/b29a0fa6cdfb4c822f60013bde8ace3677a20514/FCD-helpers.php#L313
+    var queryString = 'SELECT * FROM FCD_trees WHERE tree_id IN (SELECT tree_id FROM FCD_nodes WHERE node_id IN (?))';
+    query(queryString, [nodeIds], function(err, results) {
+      if(err) {
+        callback(err);
+      } else {
+        var extractedIds = results.map(function(result) { return result['calibration_id']; });
+        callback(null, extractedIds);
+      }
+    });
+  }
+
+  function fetchSourceNodeIdsFromMultiTree(multiTreeNodeIds, callback) {
+    // adapted from addAssociatedCalibrations()
+    // via https://github.com/NESCent/FossilCalibrations/blob/b29a0fa6cdfb4c822f60013bde8ace3677a20514/FCD-helpers.php#L293
+    var queryString = 'SELECT * FROM node_identity WHERE source_tree != \'NCBI\' AND is_pinned_node = 0 AND multitree_node_id IN (?)';
+    query(queryString, [multiTreeNodeIds], function(err, results) {
+      if(err) {
+        callback(err);
+      } else {
+        var sourceNodeIds = results.map(function (result) {
+          return result['source_node_id']
+        });
+        callback(null, sourceNodeIds);
       }
     });
   }
@@ -471,6 +514,7 @@ function Calibrations() {
       callback(err);
     };
     if(tipTaxa.length != 2) {
+      // TODO: handle single taxon
       failed({error: 'Must provide 2 tip taxa'});
       return;
     }
@@ -482,8 +526,29 @@ function Calibrations() {
         // TODO: fail if any nodeIds are not found
         // have the multi tree node ids, now get MRCA
         fetchMultiTreeNodeForMRCA(nodeIds, function(err, mrcaNode) {
-          console.log('mrca node: ' + JSON.stringify(mrcaNode));
-          callback({error: 'not finished'});
+          // Fetch ancestors of nodes for taxonA, taxonB, and mrca - collect their nodes
+          var nodeIdsToFetch = nodeIds.slice(0); // copy the array
+          nodeIdsToFetch.push(mrcaNode.node_id);
+          async.map(nodeIdsToFetch, fetchMultiTreeAncestors, function(err, ancestors) {
+            // ancestors will be 3 arrays of { node_id: 33208, parent_node_id: 33154, depth: -15 },
+            // This flattens the array
+            async.map(ancestors, function(ancestorNodes, callback) {
+              var nodeIds = ancestorNodes.map(function(node) { return node.node_id; });
+              fetchSourceNodeIdsFromMultiTree(nodeIds, function(err, sourceNodeIds) {
+                fetchCalibrationIdsFromTrees(sourceNodeIds, callback);
+              });
+            }, function(err, calibrationIds) {
+              if(err) {
+                failed(err);
+              } else {
+                // calibrationIds will be an array of 3 arrays,
+                // e.g.[ [1,2,3], [4,5,6], [7,8] ]
+                // flatten the array to [1,2,3,4,5,6,7,8]
+                var merged = [].concat.apply([], calibrationIds);
+                success(merged);
+              }
+            });
+          });
         });
       })
     });
