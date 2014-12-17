@@ -3,5 +3,6 @@ module.exports = {
   user : 'api',
   port : 3306,
   password : '',
-  database : ''
+  database : '',
+  multipleStatements : true
 };
