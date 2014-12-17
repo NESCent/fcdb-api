@@ -1,6 +1,6 @@
+var config = require('../../config/config');
 var mysql  = require('mysql');
-var connectionParams = require('../../config/connectionParams');
-var pool  = mysql.createPool(connectionParams);
+var pool  = mysql.createPool(config);
 var async = require('async');
 
 /*

@@ -1,7 +1,0 @@
-module.exports = {
-  host : '',
-  user : 'api',
-  port : 3306,
-  password : '',
-  database : ''
-};

@@ -1,1 +1,4 @@
 node_modules
+config/config.development.js
+config/config.docker.js
+
