@@ -60,17 +60,12 @@ The current dockerfile requires sharing a volume between the host and the contai
 1. Build the docker container (Only required once)
   
         $ cd fcdb-api
-        $ docker build -t fcdb-api .
+        $ docker build -t dleehr/fcdb-api .
 
 2. Export any connection parameter variables to your shell, as they will need to be passed:
 3. Start the docker container, providing the ENV variables to override (see run.sh)
 
-        $ docker run -e FCDB_MYSQL_HOST=$DOCKER_FCDB_MYSQL_HOST -e FCDB_MYSQL_PORT=$DOCKER_FCDB_MYSQL_PORT -e FCDB_MYSQL_PASSWORD=$DOCKER_FCDB_MYSQL_PASSWORD -P -d dleehr/fcdb-api
-        17 Dec 20:21:53 - [nodemon] v1.2.1
-        17 Dec 20:21:53 - [nodemon] to restart at any time, enter `rs`
-        17 Dec 20:21:53 - [nodemon] watching: *.*
-        17 Dec 20:21:53 - [nodemon] starting `node server.js`
-        Server listening on port 8081
+        $ ./run.sh
 
 ### Docker Notes
 
