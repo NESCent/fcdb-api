@@ -57,7 +57,7 @@ Running with Docker is still under development.
 
 The current dockerfile requires sharing a volume between the host and the container, to access the connection parameters. This could easily be reworked to pass these in as command-line arguments.
 
-1. Build the docker container (Only required once)
+1. Build the docker image (Only required once)
   
         $ cd fcdb-api
         $ docker build -t dleehr/fcdb-api .
