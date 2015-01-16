@@ -10,7 +10,7 @@ Getting Started
 ===============
 
 1. Install [FossilCalibrations](https://github.com/NESCent/FossilCalibrations)
-2. Create a read-only API database user in MySQL
+2. Create a read-only API database user in MySQL. Grant access and set a password:
 
         $ mysql -u root -p
         mysql> create user fcdb_api;
@@ -22,9 +22,17 @@ Getting Started
 
 3. Clone this repository
 
-        git clone git@github.com:dleehr/fcdb-api.git
+        git clone git@github.com:NESCent/fcdb-api.git
         
-4. Copy `config/connectionParams.js.template` to `config/connectionParams.js` and populate with credentials
+4. Store credentials in a protected file on the server, e.g.
+
+        cat <<- EOF > .fcdb-api-credentials
+        export FCDB_MYSQL_USER="api"
+        export FCDB_MYSQL_PASSWORD="<password here>"
+        export FCDB_MYSQL_PORT=3306
+        export FCDB_MYSQL_HOST=127.0.0.1
+        EOF
+
 5. Install Node.js (or Docker)
 
 Running with Node
@@ -37,7 +45,7 @@ Running with Node
         
 2. Run server.js (Edit and customize port if desired)
 
-        $ node server.js
+        $ source .fcdb-api-credentials && node server.js
         Server listening on port 8081
         
 `nodemon` can be used to restart node when files change
@@ -53,27 +61,46 @@ Running with Node
 Running with Docker
 ===================
 
-Running with Docker is still under development.
+Running with Docker is under development.
 
-The current dockerfile requires sharing a volume between the host and the container, to access the connection parameters. This could easily be reworked to pass these in as command-line arguments.
+The current setup uses container linking and assumes the MySQL database will be running in another Docker container. It can be adapted 
 
-1. Build the docker image (Only required once)
-  
+## Configuring environment variables
+
+When building the Docker image, the Dockerfile replaces the config.js with a version that takes advantage of container linking - the MySQL host and port are provided by Docker, and only if the database is also running inside a docker container.
+
+To connect to a database on a different host, set the connection parameters as above and remove the line from the Dockerfile that replaces config.js
+
+## Building the Docker image
+
         $ cd fcdb-api
-        $ docker build -t dleehr/fcdb-api .
+        $ docker build -t NESCent/fcdb-api .
 
-2. Export any connection parameter variables to your shell, as they will need to be passed:
-3. Start the docker container, providing the ENV variables to override (see run.sh)
+## Running in Docker
 
-        $ ./run.sh
+### Running a database container
 
+Use the rundb.sh script. This starts a mysql container. On first run, it will create the database and load it with data. This is outside the scope of running the container.
+
+        $ rundb.sh
+
+### Running an fcdb-api container
+
+If you are using the rundb.sh script to run your database, you need only to make sure `DOCKER_FCDB_MYSQL_PASSWORD` is set in the environment.
+
+      $ export DOCKER_FCDB_MYSQL_PASSWORD=password && ./run.sh
+      
+### Stopping containers
+
+Stop the fcdb-api container with `stop.sh`
+Stop the fcdb-mysql container with `stopdb.sh`
+      
 ### Docker Notes
 
-- By default, node will terminate if an uncaught error is found, so `nodemon` is used to automatically restart node.
-- The host/port sent to the docker container must be an address that is reachable from the container.
-- The docker container will internally server on port 8081, but this will be exposed on the docker host as a different port. Run `docker ps` or `docker port` to find out what the external port is
+- By default, node will terminate if an uncaught error is found, so `forever` is used to automatically restart node.
+- The host/port sent to the docker container for MySQL must be an address that is reachable from the container.
+- The docker container will internally server on port 8081, but this will be exposed on the docker host as a different port. Run `docker ps` or `docker port fcdb-api 8081` to find out what the external port is
       
         $ docker ps
         CONTAINER ID        IMAGE                    PORTS                     NAMES
-        68ab266238c8        fcdb-api:latest          0.0.0.0:49172->8081/tcp   mad_blackwell     
-
+        68ab266238c8        NESCent/fcdb-api:latest          0.0.0.0:49172->8081/tcp   fcdb-api     

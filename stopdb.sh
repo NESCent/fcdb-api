@@ -3,4 +3,4 @@
 
 CONTAINER=`docker rm -f fcdb-mysql`
 
-.echo "Removed database container $CONTAINER"
+echo "Removed database container $CONTAINER"
