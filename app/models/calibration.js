@@ -25,14 +25,6 @@ function Fossil(databaseRow) {
 }
 
 /*
-  Creates a TipPair object from a database row
- */
-
-function TipPair(databaseRow) {
-
-}
-
-/*
  Creates an Image object from a database row
  */
 function Image(databaseRow) {
@@ -56,12 +48,6 @@ function Calibration(databaseRow) {
   this.nodeMaxAge = databaseRow['MaxAge'];
   this.calibrationReference = databaseRow['FullReference'];
   this.fossils = [];
-  // fossils
-  this.tipPairs = [];
-  // tip_pairs
-    // Tip 1 Name
-    // Tip 2 Name
-    // “Distance” of root from tip(s)?
   this.publicationImages = [];
   this.treeImages = [];
 }
@@ -210,7 +196,9 @@ function Calibrations() {
 
     // Convenience functions for ultimate success/failure
     var success = function(results) {
-      callback(null, results);
+      // wrap the results and params
+      var responseObject = {query: params, calibrations: results};
+      callback(null, responseObject);
     };
 
     var failed = function(err) {
