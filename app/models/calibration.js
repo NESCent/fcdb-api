@@ -33,6 +33,16 @@ function TipPair(databaseRow) {
 }
 
 /*
+ Creates an Image object from a database row
+ */
+function Image(databaseRow) {
+  var PUBLICATION_IMAGE_ROOT = 'https://fossilcalibrations.org/publication_image.php?id=';
+  this.id = databaseRow['PublicationID'];
+  this.url = PUBLICATION_IMAGE_ROOT + databaseRow['PublicationID'];
+  this.caption = databaseRow['caption'];
+}
+
+/*
   Creates a calibration object from a database row
  */
 function Calibration(databaseRow) {
@@ -52,6 +62,8 @@ function Calibration(databaseRow) {
     // Tip 1 Name
     // Tip 2 Name
     // “Distance” of root from tip(s)?
+  this.publicationImages = [];
+  this.treeImages = [];
 }
 
 function Calibrations() {
@@ -76,17 +88,32 @@ function Calibrations() {
           callback(null, calibration);
         }
       } else {
+        // Switch to async to chain these instead of the growing callback pyramid
         // attach fossils
         fetchFossils(calibrationId, function (err, fossils) {
           if (err) {
             callback(err);
           } else {
             calibration.fossils = fossils;
-            callback(null, calibration);
+            fetchPublicationImages(calibrationId, function (err, publicationImages) {
+              if(err) {
+                callback(err);
+              } else {
+                calibration.publicationImages = publicationImages;
+                fetchTreeImages(calibrationId, function (err, treeImages) {
+                  if(err) {
+                    callback(err);
+                  } else {
+                    calibration.treeImages = treeImages;
+                    // Calibration is complete
+                    callback(null, calibration);
+                  }
+                });
+              }
+            });
           }
         });
         // TODO: tips
-        // TODO: images
       }
     });
   }
@@ -115,6 +142,34 @@ function Calibrations() {
       } else {
         var fossilResults = results.map(function(result) { return new Fossil(result); });
         callback(null, fossilResults);
+      }
+    });
+  }
+
+  // Fetch Publication images for a calibration from the database and produce a list of publication images
+  function fetchPublicationImages(calibrationId, callback) {
+    var queryString = 'SELECT P.* from View_Calibrations C, publication_images P WHERE C.CalibrationID = ? AND C.PublicationID = P.PublicationID';
+    query(queryString, [calibrationId], function(err, results) {
+      if(err) {
+        callback(err);
+      } else {
+        var publicationImages = results.map(function(result) { return new Image(result); });
+        callback(null, publicationImages);
+      }
+    });
+  }
+
+  // Tree images are stored in the publication_image table, but use -1 * CalibrationID instead of a PublicationID
+  // We use the same data structure to return the images.
+  function fetchTreeImages(calibrationId, callback) {
+    var treeImageId = -1 * calibrationId;
+    var queryString = 'SELECT P.* from publication_images P where P.PublicationID = ?';
+    query(queryString, [treeImageId], function(err, results) {
+      if(err) {
+        callback(err);
+      } else {
+        var treeImages = results.map(function(result) { return new Image(result); });
+        callback(null, treeImages);
       }
     });
   }
