@@ -8,6 +8,7 @@ var express     = require('express'); 		// call express
 var app         = express(); 				// define our app using express
 var bodyParser  = require('body-parser');
 var csv         = require('fast-csv');
+var flatten     = require('flat');
 
 // Our models
 var Calibration = require('./app/models/calibration');
@@ -23,20 +24,35 @@ var port = process.env.PORT || 8081; 		// set our port
 // =============================================================================
 var router = express.Router(); 				// get an instance of the express Router
 
+var writeCSVResponse = function(payload, res) {
+  var output = csv.createWriteStream({headers:true});
+  res.set({'Content-Type': 'text/csv'});
+  // Include content-type header
+  output.pipe(res);
+  if(payload.hasOwnProperty('calibrations')) {
+    payload = payload['calibrations'];
+  }
+  if(Array.isArray(payload)) {
+    // multiple items
+    payload.forEach(function(element) {
+      output.write(flatten(element));
+    });
+  } else {
+    // Single item
+    output.write(flatten(payload));
+  }
+  output.end();
+};
+
+var writeJSONResponse = function(payload, res) {
+  res.json(payload);
+};
+
 var sendResponsePayload = function(payload, res, format) {
   if(format === 'csv') {
-    var output = csv.createWriteStream({headers:true});
-    res.set({'Content-Type': 'text/csv'});
-    // Include content-type header
-    output.pipe(res);
-    if(Array.isArray(payload)) {
-      payload.forEach(function(element) { output.write(element); });
-    } else {
-      output.write(payload);
-    }
-    output.end();
+    writeCSVResponse(payload, res);
   } else {
-    res.json(payload);
+    writeJSONResponse(payload, res);
   }
 };
 
