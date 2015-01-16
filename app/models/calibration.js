@@ -99,7 +99,6 @@ function Calibrations() {
             });
           }
         });
-        // TODO: tips
       }
     });
   }
