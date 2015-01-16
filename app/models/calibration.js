@@ -105,8 +105,11 @@ function Calibrations() {
 
   // Fetch a single calibration from the database by ID and produce a single object
   function fetchCalibration(calibrationId, callback) {
-    var queryString = 'SELECT * FROM ' + TABLE_NAME + ' WHERE CalibrationID = ? LIMIT 1';
-    query(queryString, [calibrationId], function(err, results) {
+    var STATUS_PUBLISHED = 4;
+    // When fetching a calibration, exclude non-published calibrations
+    var queryString = 'SELECT * FROM ' + TABLE_NAME + ' WHERE CalibrationID = ? ' +
+      'AND CalibrationID in (SELECT CalibrationID FROM calibrations WHERE PublicationStatus = ?) LIMIT 1';
+    query(queryString, [calibrationId, STATUS_PUBLISHED], function(err, results) {
       if(err) {
         callback(err);
       } else if(results.length == 0) {
