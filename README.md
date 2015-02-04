@@ -13,7 +13,7 @@ Getting Started
 2. Create a read-only API database user in MySQL. Grant access and set a password:
 
         $ mysql -u root -p
-        mysql> create user fcdb_api;
+        mysql> create user api;
         mysql> grant select, execute on FossilCalibration.* to api;
         mysql> exit
         $ mysql -u api FossilCalibration
